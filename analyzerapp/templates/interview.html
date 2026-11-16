@@ -1,0 +1,248 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Interview</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            text-align: center;
+            padding: 30px;
+            margin: 0;
+            background: linear-gradient(135deg, #dbe6f6, #c5796d);
+            animation: fadeInBody 1s ease-in;
+        }
+
+        @keyframes fadeInBody {
+            0% { opacity: 0; transform: scale(0.98); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        h2 {
+            font-size: 32px;
+            color: #fff;
+            text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 20px;
+            animation: slideInDown 1.2s ease;
+        }
+
+        @keyframes slideInDown {
+            0% { transform: translateY(-20px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            animation: zoomIn 1.3s ease;
+        }
+
+        @keyframes zoomIn {
+            0% { transform: scale(0.95); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        video {
+            width: 400px;
+            max-width: 90%;
+            border: 3px solid #fff;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            margin-top: 25px;
+            transition: transform 0.3s ease;
+        }
+
+        video:hover {
+            transform: scale(1.03);
+        }
+
+        #questions {
+            font-weight: bold;
+            font-size: 20px;
+            margin-top: 30px;
+            color: #fff;
+            background: rgba(0, 0, 0, 0.3);
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        button {
+            margin-top: 30px;
+            padding: 14px 28px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            background: linear-gradient(to right, #007bff, #00c6ff);
+            color: white;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        button:hover {
+            background: linear-gradient(to right, #0056b3, #009fd9);
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* Avatar Image Styling */
+        img {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin: 0 auto 20px;
+            display: block;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.3);
+            animation: bounceIn 1s ease-in-out;
+        }
+
+        @keyframes bounceIn {
+            0% { transform: scale(0.9); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🤖 AI Resume Interviewer</h2>
+
+        <!-- 3D Avatar -->
+        <img src="{% static 'avatar_face.png' %}" 
+            alt="AI Interviewer Face">
+
+        <!-- Question display -->
+        <div id="questions">Click "Start Interview" to begin.</div>
+
+        <!-- Webcam view -->
+        <video id="preview" autoplay muted playsinline></video><br>
+        <button id="startBtn">🎙️ Start Interview</button>
+    </div>
+
+    <script>
+        const questions = {{ questions|safe }} || [];
+        const questionDiv = document.getElementById('questions');
+        const video = document.getElementById('preview');
+        const startBtn = document.getElementById('startBtn');
+
+        let mediaRecorder, recordedChunks = [];
+        let webcamStream = null;
+
+        async function startWebcam() {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                video.srcObject = webcamStream;
+
+                mediaRecorder = new MediaRecorder(webcamStream);
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = e => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.start();
+            } catch (error) {
+                questionDiv.textContent = "❌ Webcam access failed. Please check your permissions.";
+                console.error(error);
+            }
+        }
+
+        function speak(text, callback) {
+            questionDiv.textContent = text;
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.onend = callback;
+            speechSynthesis.speak(utter);
+        }
+
+        function listenForAnswer(nextCallback) {
+            if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+                alert("Speech Recognition is not supported in your browser.");
+                nextCallback();
+                return;
+            }
+
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            recognition.lang = 'en-US';
+
+            recognition.onresult = (event) => {
+                const response = event.results[0][0].transcript;
+                console.log("User Answer:", response);
+                recognition.stop();
+                nextCallback();
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Speech recognition error:", event.error);
+                recognition.stop();
+                nextCallback();
+            };
+
+            recognition.start();
+        }
+
+        function askQuestions(index = 0) {
+            if (index >= questions.length) {
+                stopRecording();
+                return;
+            }
+
+            speak(questions[index], () => {
+                listenForAnswer(() => {
+                    askQuestions(index + 1);
+                });
+            });
+        }
+
+        function stopRecording() {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+            }
+
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const formData = new FormData();
+                formData.append('video', blob);
+
+                fetch('/upload_video/', {
+                    method: 'POST',
+                    body: formData
+                }).then(res => res.text())
+                  .then(response => {
+                      questionDiv.innerHTML = "✅ Interview complete. Thank you!";
+                      startBtn.disabled = false;
+                  });
+            };
+        }
+
+        startBtn.onclick = async () => {
+            startBtn.disabled = true;
+            await startWebcam();
+            speak("Welcome to your AI Interview. Let's begin.", () => {
+                askQuestions(0);
+            });
+        };
+    </script>
+</body>
+</html>

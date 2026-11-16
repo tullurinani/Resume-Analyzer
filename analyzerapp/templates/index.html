@@ -1,0 +1,110 @@
+<!-- index.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Resume Analyzer AI</title>
+    <style>
+        body {
+            background: linear-gradient(to right, #4facfe, #00f2fe);
+            font-family: 'Segoe UI', sans-serif;
+            color: white;
+            margin: 0;
+            padding: 0;
+            animation: fadeInBody 1s ease-in-out;
+        }
+
+        @keyframes fadeInBody {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 80px auto;
+            text-align: center;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(4px);
+            animation: slideUp 1.2s ease-in-out;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-size: 48px;
+            margin-bottom: 10px;
+            color: #ffffff;
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+            animation: zoomIn 1.5s ease;
+        }
+
+        @keyframes zoomIn {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        p {
+            font-size: 20px;
+            margin-bottom: 30px;
+            color: #e6faff;
+            animation: fadeInText 1.5s ease-in-out;
+        }
+
+        @keyframes fadeInText {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        a {
+            display: inline-block;
+            margin: 10px;
+            padding: 12px 24px;
+            font-size: 16px;
+            background: white;
+            color: #4facfe;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        a:hover {
+            background: #e6e6e6;
+            color: #007bff;
+            transform: scale(1.05);
+        }
+
+        p:last-of-type {
+            text-align: center;
+            margin-top: 40px;
+            font-size: 14px;
+            color: #ffffffcc;
+            animation: fadeInFooter 2s ease;
+        }
+
+        @keyframes fadeInFooter {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 Resume Analyzer AI</h1>
+        <p>Upload your resume, take an AI-led interview, and get evaluated by our virtual 3D interviewer!</p>
+        <a href="{% url 'register' %}">Register</a>
+        <a href="{% url 'user_login' %}">User Login</a>
+        <a href="{% url 'admin_login' %}">Admin Login</a>
+    </div>
+</body>
+<footer class="footer">
+    <p>@ Copy Right 2025</p>
+</footer>
+</html>
