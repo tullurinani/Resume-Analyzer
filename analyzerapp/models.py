@@ -1,30 +1,21 @@
-# analyzerapp/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
 
-class Resume(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
-    resume_file = models.FileField(upload_to='resumes/uploaded/')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.username}'s Resume"
 
 class Interview(models.Model):
     STATUS_CHOICES = (
-        ('Pending', 'Pending'),
-        ('Accepted', 'Accepted'),
-        ('Rejected', 'Rejected'),
+        ("Pending", "Pending"),
+        ("Accepted", "Accepted"),
+        ("Rejected", "Rejected"),
     )
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     questions = models.TextField()
-    video_file = models.FileField(upload_to='media/interviews/', null=True, blank=True)
+    video_file = models.FileField(upload_to="media/interviews/", null=True, blank=True)
     communication_score = models.IntegerField(default=0)
     relevance_score = models.IntegerField(default=0)
     confidence_score = models.IntegerField(default=0)
     total_score = models.FloatField(default=0.0)
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="Pending")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -38,12 +29,10 @@ class Candidate(models.Model):
     address = models.TextField()
     state = models.CharField(max_length=50)
     password = models.CharField(max_length=100)
-    
-    resume_file = models.FileField(upload_to='resumes/uploaded/', null=True, blank=True)
-    interview_video = models.FileField(upload_to='media/interviews/', null=True, blank=True)
-
+    resume_file = models.FileField(upload_to="resumes/uploaded/", null=True, blank=True)
+    interview_video = models.FileField(upload_to="media/interviews/", null=True, blank=True)
     score = models.FloatField(default=0)
-    status = models.CharField(max_length=20, default='Pending')
+    status = models.CharField(max_length=20, default="Pending")
     submitted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -51,14 +40,15 @@ class Candidate(models.Model):
 
 
 class Resume(models.Model):
-    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name='resumes')
-    resume_file = models.FileField(upload_to='resumes/uploaded/')
+    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE, related_name="resumes")
+    resume_file = models.FileField(upload_to="resumes/uploaded/")
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.candidate.name}'s Resume"
-    
-    
+
+
+# Retained for compatibility with the existing initial migration; not used by the current views.
 class Candidate1(models.Model):
     name = models.CharField(max_length=100)
     email = models.EmailField(unique=True)
@@ -66,11 +56,10 @@ class Candidate1(models.Model):
     address = models.TextField()
     state = models.CharField(max_length=50)
     password = models.CharField(max_length=100)
-    status = models.CharField(max_length=20, default='Pending')
+    status = models.CharField(max_length=20, default="Pending")
     score = models.FloatField(default=0)
-    interview_video = models.FileField(upload_to='media/interviews/', null=True, blank=True)
-    
-    submitted_at = models.DateTimeField(auto_now_add=True)  # ✅ Add this line
+    interview_video = models.FileField(upload_to="media/interviews/", null=True, blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
