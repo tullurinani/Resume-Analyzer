@@ -1,0 +1,40 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7f8">
+  <title>{% block title %}Resume Analyzer AI{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header class="site-header">
+    <a class="brand" href="{% url 'index' %}"><span class="brand-mark">RA</span><span>Resume Analyzer AI</span></a>
+    <nav class="nav-links" aria-label="Main navigation">
+      {% if request.session.candidate_id %}
+        <a href="{% url 'user_dashboard' %}">Dashboard</a>
+        <a class="nav-cta" href="{% url 'user_logout' %}">Sign out</a>
+      {% elif request.user.is_authenticated and request.user.is_staff %}
+        <a href="{% url 'admin_dashboard' %}">Staff dashboard</a>
+        <a class="nav-cta" href="{% url 'admin_logout' %}">Sign out</a>
+      {% else %}
+        <a href="{% url 'user_login' %}">Candidate sign in</a>
+        <a class="nav-cta" href="{% url 'register' %}">Create account</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main id="main-content" class="container {% block container_class %}{% endblock %}">
+    {% if messages %}
+      <ul class="messages" aria-live="polite">
+        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="footer">Resume Analyzer AI · A learning project for structured resume review and interview practice</footer>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
