@@ -283,3 +283,9 @@ def admin_logout(request):
 def user_logout(request):
     request.session.flush()
     return redirect("index")
+
+
+@require_GET
+def health_check(request):
+    """Lightweight endpoint for container health checks."""
+    return JsonResponse({"status": "ok"})
