@@ -1,34 +1,20 @@
-# analyzerapp/urls.py
-
 from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('', views.index, name='index'),
-    
-    # User auth
-    path('register/', views.user_register, name='register'),
-    path('login/', views.user_login, name='user_login'),
-    path('dashboard/', views.user_dashboard, name='user_dashboard'),
-    
-    # Resume & Interview
-    path('upload_resume/', views.upload_resume, name='upload_resume'),
-    path('interview/', views.start_interview, name='start_interview'),
-    path('upload_interview_video/', views.upload_interview_video, name='upload_interview_video'),
-    
-    # Admin
-    path('admin_login/', views.admin_login, name='admin_login'),
-    path('admin_dashboard/', views.admin_dashboard, name='admin_dashboard'),
-    path('score/<int:id>/', views.score_interview, name='score_interview'),
-    path('accept/<int:id>/', views.accept_interview, name='accept_interview'),
-    path('reject/<int:id>/', views.reject_interview, name='reject_interview'),
-    path('admin_logout/', views.admin_logout, name='admin_logout'),
-    path('resume_upload/', views.resume_upload, name='resume_upload'),
-    path('start_interview/', views.start_interview, name='start_interview'),
-    path('dashboard/', views.user_dashboard, name='user_dashboard'),
-    path('upload_video/', views.upload_video, name='upload_video'),
-    path('update_status/<int:candidate_id>/', views.update_status, name='update_status'),
-    path('admin_logout/', views.admin_logout, name='admin_logout'),
-    path('logout/', views.user_logout, name='user_logout'),
-
+    path("", views.index, name="index"),
+    path("register/", views.user_register, name="register"),
+    path("login/", views.user_login, name="user_login"),
+    path("logout/", views.user_logout, name="user_logout"),
+    path("dashboard/", views.user_dashboard, name="user_dashboard"),
+    path("resume/upload/", views.upload_resume, name="upload_resume"),
+    path("interview/", views.start_interview, name="start_interview"),
+    path("interview/upload/", views.upload_video, name="upload_video"),
+    path("staff/login/", views.admin_login, name="admin_login"),
+    path("staff/logout/", views.admin_logout, name="admin_logout"),
+    path("staff/dashboard/", views.admin_dashboard, name="admin_dashboard"),
+    path("staff/candidates/<int:candidate_id>/status/", views.update_status, name="update_status"),
+    path("staff/interviews/<int:id>/score/", views.score_interview, name="score_interview"),
+    path("staff/interviews/<int:id>/accept/", views.accept_interview, name="accept_interview"),
+    path("staff/interviews/<int:id>/reject/", views.reject_interview, name="reject_interview"),
 ]
