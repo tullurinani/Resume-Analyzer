@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import check_password, make_password
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, SimpleTestCase
 from django.urls import reverse
 
@@ -7,7 +8,7 @@ from .ai.question_generator import generate_questions
 from .ai.resume_parser import parse_resume_text
 from .ai.scoring_model import calculate_score
 from .forms import CandidateForm
-from .models import Candidate
+from .models import Candidate, Resume
 
 
 class ResumeParsingTests(SimpleTestCase):
@@ -87,7 +88,44 @@ class CandidateAccountTests(TestCase):
             username="reviewer2", password="Strong-staff-password-123", is_staff=True
         )
         self.client.force_login(staff)
+        get_response = self.client.get(reverse("update_status", args=[candidate.pk]))
+        self.assertEqual(get_response.status_code, 405)
         response = self.client.post(reverse("update_status", args=[candidate.pk]), {"status": "Accepted"})
         self.assertRedirects(response, reverse("admin_dashboard"))
         candidate.refresh_from_db()
         self.assertEqual(candidate.status, "Accepted")
+
+
+class PrivateFileAccessTests(TestCase):
+    def setUp(self):
+        self.candidate = Candidate.objects.create(
+            name="Owner Candidate", email="owner@example.com", phone="9000000000",
+            address="Hyderabad", state="Telangana",
+            password=make_password("Candidate-password-123"),
+        )
+        self.resume = Resume.objects.create(
+            candidate=self.candidate,
+            resume_file=SimpleUploadedFile("resume.pdf", b"%PDF-1.4 sample", content_type="application/pdf"),
+        )
+
+    def test_resume_requires_login_and_owner_can_open(self):
+        anonymous_response = self.client.get(reverse("view_resume", args=[self.resume.pk]))
+        self.assertEqual(anonymous_response.status_code, 302)
+        self.client.post(reverse("user_login"), {
+            "email": "owner@example.com", "password": "Candidate-password-123",
+        })
+        response = self.client.get(reverse("view_resume", args=[self.resume.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+
+    def test_other_candidate_cannot_open_resume(self):
+        Candidate.objects.create(
+            name="Other Candidate", email="other@example.com", phone="9000000001",
+            address="Hyderabad", state="Telangana",
+            password=make_password("Other-password-123"),
+        )
+        self.client.post(reverse("user_login"), {
+            "email": "other@example.com", "password": "Other-password-123",
+        })
+        response = self.client.get(reverse("view_resume", args=[self.resume.pk]))
+        self.assertEqual(response.status_code, 403)
