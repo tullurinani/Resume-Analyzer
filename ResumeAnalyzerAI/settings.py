@@ -79,7 +79,8 @@ if DATABASE_URL:
 else:
     DB_ENGINE = os.environ.get("DB_ENGINE", "django.db.backends.sqlite3")
     if DB_ENGINE.endswith("sqlite3"):
-        DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": BASE_DIR / "db.sqlite3"}}
+        sqlite_path = Path(os.environ.get("DJANGO_SQLITE_PATH", str(BASE_DIR / "db.sqlite3")))
+        DATABASES = {"default": {"ENGINE": DB_ENGINE, "NAME": sqlite_path}}
     else:
         DATABASES = {
             "default": {
