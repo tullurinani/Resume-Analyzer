@@ -11,7 +11,7 @@ def generate_questions(parsed_resume: dict) -> list[str]:
     prompts = {
         "Python": "Can you explain a Python project where you used functions, data structures or file handling?",
         "Java": "Which object-oriented programming concepts have you used in Java, and where?",
-        "SQL": "Describe a query where you used joins, grouping or a subquery. How did you validate its result?",
+        "SQL": "Describe an SQL query where you used joins, grouping or a subquery. How did you validate its result?",
         "Django": "How does Django handle a request from a URL to a view and then to a template?",
         "Spring Boot": "How would you design a REST endpoint in Spring Boot and validate its input?",
         "Machine Learning": "How did you split your dataset and evaluate your machine-learning model?",
