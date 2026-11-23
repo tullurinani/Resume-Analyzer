@@ -11,8 +11,8 @@
     <tbody>{% for candidate in candidates %}
       <tr><td><strong>{{ candidate.name }}</strong><br><span class="muted">{{ candidate.submitted_at|date:"M d, Y" }}</span></td>
       <td>{{ candidate.email }}<br><span class="muted">{{ candidate.phone }}</span></td>
-      <td>{% with resume=candidate.resumes.last %}{% if resume %}<a href="{{ resume.resume_file.url }}" target="_blank" rel="noopener">Open resume</a>{% else %}<span class="muted">Not uploaded</span>{% endif %}{% endwith %}</td>
-      <td>{% if candidate.interview_video %}<a href="{{ candidate.interview_video.url }}" target="_blank" rel="noopener">Open recording</a>{% else %}<span class="muted">Not submitted</span>{% endif %}</td>
+      <td>{% with resume=candidate.resumes.last %}{% if resume %}<a href="{% url 'view_resume' resume.id %}" target="_blank" rel="noopener">Open resume</a>{% else %}<span class="muted">Not uploaded</span>{% endif %}{% endwith %}</td>
+      <td>{% if candidate.interview_video %}<a href="{% url 'view_interview_video' candidate.id %}" target="_blank" rel="noopener">Open recording</a>{% else %}<span class="muted">Not submitted</span>{% endif %}</td>
       <td><span class="pill">{{ candidate.status }}</span></td>
       <td><form class="table-form" method="post" action="{% url 'update_status' candidate.id %}">{% csrf_token %}<select name="status" aria-label="Status for {{ candidate.name }}"><option value="Pending" {% if candidate.status == 'Pending' %}selected{% endif %}>Pending</option><option value="Accepted" {% if candidate.status == 'Accepted' %}selected{% endif %}>Accepted</option><option value="Rejected" {% if candidate.status == 'Rejected' %}selected{% endif %}>Rejected</option></select><button class="button" type="submit">Save</button></form></td></tr>
     {% endfor %}</tbody>
