@@ -1,45 +1,39 @@
-def generate_questions(parsed_resume):
-    questions = []
+"""Generate explainable, rule-based interview prompts from resume fields."""
+from __future__ import annotations
 
+
+def generate_questions(parsed_resume: dict) -> list[str]:
+    questions: list[str] = []
     skills = parsed_resume.get("skills", [])
     education = parsed_resume.get("education", [])
     experience = parsed_resume.get("experience", [])
 
-    # Skill-based questions
-    if "Python" in skills:
-        questions.append("Tell me about your experience with Python.")
-    if "Machine Learning" in skills:
-        questions.append("Describe a machine learning project you've done.")
-    if "Django" in skills:
-        questions.append("What projects have you built using Django?")
-    if "SQL" in skills:
-        questions.append("How proficient are you with writing SQL queries?")
-    if "JavaScript" in skills:
-        questions.append("Have you used JavaScript for any frontend or backend projects?")
-    if "Communication" in skills:
-        questions.append("How do you rate your communication skills in a team environment?")
+    prompts = {
+        "Python": "Can you explain a Python project where you used functions, data structures or file handling?",
+        "Java": "Which object-oriented programming concepts have you used in Java, and where?",
+        "SQL": "Describe a query where you used joins, grouping or a subquery. How did you validate its result?",
+        "Django": "How does Django handle a request from a URL to a view and then to a template?",
+        "Spring Boot": "How would you design a REST endpoint in Spring Boot and validate its input?",
+        "Machine Learning": "How did you split your dataset and evaluate your machine-learning model?",
+        "TensorFlow": "How did you prepare your data and avoid overfitting when training a model?",
+        "OpenCV": "Which image-processing steps did you use before running your computer-vision logic?",
+        "Saviynt": "How would you explain the relationship between an identity, an account and an entitlement in an IGA platform?",
+        "SailPoint": "How would you troubleshoot an account aggregation that is not correlating to the expected identity?",
+        "JDBC": "How would you troubleshoot a JDBC connection or account-import failure?",
+        "REST API": "How do you handle an unsuccessful REST API response and decide whether to retry?",
+    }
+    for skill in skills:
+        for key, question in prompts.items():
+            if str(skill).casefold() == key.casefold():
+                questions.append(question)
+                break
 
-    # Education-based question
     if education:
-        questions.append(f"What did you learn during your {education[0]}?")
-
-    # Experience-based questions
+        questions.append(f"What is one practical concept you applied during your studies in {education[0]}?")
     if experience:
-        questions.append(f"You mentioned {experience[0]}. Can you elaborate?")
-        questions.append("What was your role in that organization?")
-        questions.append("What challenges did you face in your previous job and how did you overcome them?")
-        questions.append("Which achievement are you most proud of from your past job?")
-
-    # Fallback questions if no meaningful data
-    if not questions:
-        questions = [
-            "Can you walk me through your resume?",
-            "What are your key strengths relevant to this role?",
-            "Describe a challenge you faced and how you overcame it.",
-            "Why are you interested in this position?",
-            "Where do you see yourself in five years?",
-            "Can you describe a successful project you worked on?",
-            "How do you handle working under pressure?"
-        ]
-
-    return "\n".join(questions)
+        questions.append(f"You listed {experience[0]}. What was your specific contribution and outcome?")
+    questions.extend([
+        "Walk me through one project from problem statement to final result.",
+        "Describe a technical issue you faced, how you investigated it and how you verified the fix.",
+    ])
+    return questions[:10]
