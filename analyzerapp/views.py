@@ -1,7 +1,9 @@
 """Views for resume upload, practice interviews and staff review."""
 from __future__ import annotations
 
+import mimetypes
 import os
+from pathlib import Path
 
 from django.conf import settings
 from django.contrib import messages
@@ -9,15 +11,15 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.hashers import check_password, make_password
 from django.core.mail import send_mail
-from django.http import JsonResponse
+from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.http import require_POST
+from django.views.decorators.http import require_GET, require_POST
 
 from .ai.question_generator import generate_questions
 from .ai.resume_parser import parse_resume
 from .ai.scoring_model import calculate_score
 from .forms import CandidateForm, LoginForm, ResumeUploadForm
-from .models import Candidate, Interview
+from .models import Candidate, Interview, Resume
 
 
 def index(request):
@@ -108,8 +110,8 @@ def start_interview(request):
         try:
             parsed = parse_resume(latest_resume.resume_file.path)
             questions = generate_questions(parsed)
-        except Exception as exc:
-            messages.error(request, f"The resume could not be parsed: {exc}")
+        except Exception:
+            messages.error(request, "The resume could not be parsed. Please check the file and try again.")
     else:
         messages.info(request, "Upload a PDF or DOCX resume before starting an interview.")
 
@@ -140,6 +142,47 @@ def _staff_check(user):
 
 
 staff_required = user_passes_test(_staff_check, login_url="admin_login")
+
+
+def _private_file_response(field_file, *, as_attachment=False):
+    if not field_file:
+        raise Http404("File not found.")
+    file_handle = field_file.open("rb")
+    response = FileResponse(
+        file_handle,
+        as_attachment=as_attachment,
+        filename=Path(field_file.name).name,
+    )
+    content_type, _ = mimetypes.guess_type(field_file.name)
+    if content_type:
+        response["Content-Type"] = content_type
+    response["X-Content-Type-Options"] = "nosniff"
+    response["Cache-Control"] = "private, no-store"
+    return response
+
+
+@require_GET
+def view_resume(request, resume_id):
+    resume = get_object_or_404(Resume, pk=resume_id)
+    candidate = _current_candidate(request)
+    is_owner = candidate is not None and candidate.pk == resume.candidate_id
+    if not is_owner and not _staff_check(request.user):
+        if candidate is not None:
+            return HttpResponseForbidden("You cannot view another candidate's resume.")
+        return redirect("admin_login" if request.user.is_authenticated else "user_login")
+    return _private_file_response(resume.resume_file)
+
+
+@require_GET
+def view_interview_video(request, candidate_id):
+    candidate_record = get_object_or_404(Candidate, pk=candidate_id)
+    candidate = _current_candidate(request)
+    is_owner = candidate is not None and candidate.pk == candidate_record.pk
+    if not is_owner and not _staff_check(request.user):
+        if candidate is not None:
+            return HttpResponseForbidden("You cannot view another candidate's recording.")
+        return redirect("admin_login" if request.user.is_authenticated else "user_login")
+    return _private_file_response(candidate_record.interview_video)
 
 
 def admin_login(request):
