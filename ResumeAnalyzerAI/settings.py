@@ -108,10 +108,16 @@ DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "analyzerapp" / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
-    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
-}
+if DEBUG:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+else:
+    STORAGES = {
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
+    }
 MEDIA_URL = "/media/"
 MEDIA_ROOT = Path(os.environ.get("DJANGO_MEDIA_ROOT", str(BASE_DIR / "media_data")))
 
