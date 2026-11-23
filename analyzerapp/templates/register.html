@@ -1,155 +1,17 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>📝 User Registration</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(to right, #4facfe, #00f2fe);
-            padding: 40px;
-            margin: 0;
-            animation: fadeInBody 1s ease-in-out;
-        }
-
-        @keyframes fadeInBody {
-            from { opacity: 0; transform: scale(0.98); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .container {
-            width: 400px;
-            margin: auto;
-            background: rgba(255, 255, 255, 0.95);
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
-            animation: slideUp 1.1s ease;
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        h2 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 25px;
-            font-size: 28px;
-        }
-
-        input, select, textarea {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0 16px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            transition: border-color 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        input:focus, select:focus, textarea:focus {
-            border-color: #00c6ff;
-            box-shadow: 0 0 5px rgba(0, 198, 255, 0.5);
-            outline: none;
-            background-color: #f9fcff;
-        }
-
-        button {
-            background: linear-gradient(to right, #007bff, #00c6ff);
-            color: white;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            width: 100%;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 6px 18px rgba(0, 123, 255, 0.3);
-        }
-
-        button:hover {
-            background: linear-gradient(to right, #0056b3, #00a0e3);
-            transform: scale(1.03);
-        }
-
-        .error {
-            color: #e63946;
-            background: #ffe9ec;
-            padding: 10px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-            text-align: center;
-            animation: fadeInError 0.8s ease-in-out;
-        }
-
-        @keyframes fadeInError {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        p {
-            text-align: center;
-            margin-top: 15px;
-            color: #333;
-        }
-
-        a {
-            color: #007bff;
-            text-decoration: none;
-            font-weight: bold;
-            transition: color 0.3s;
-        }
-
-        a:hover {
-            color: #0056b3;
-        }
-
-        p:last-of-type {
-            margin-top: 40px;
-            font-size: 14px;
-            color: #ffffffcc;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h2>📝 Register</h2>
-
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-
-        <form method="POST">
-            {% csrf_token %}
-            {{ form.non_field_errors }}
-
-            {{ form.name.label }}:
-            {{ form.name }}
-
-            {{ form.email.label }}:
-            {{ form.email }}
-
-            {{ form.phone.label }}:
-            {{ form.phone }}
-
-            {{ form.address.label }}:
-            {{ form.address }}
-
-            {{ form.password.label }}:
-            {{ form.password }}
-
-            {{ form.confirm_password.label }}:
-            {{ form.confirm_password }}
-
-            <button type="submit">Register</button>
-        </form>
-
-        <p>Already registered? <a href="{% url 'user_login' %}">Login here</a></p>
-        <a href="{% url 'user_logout' %}">🚪 Logout</a>
-        </form>
-    </div>
-    <p>Mansoor @ Copy Right 2025</p>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Create account | Resume Analyzer AI{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="page-heading"><div class="eyebrow">CANDIDATE ACCOUNT</div><h1>Create your account</h1><p>Register to upload a resume and complete an interview practice session.</p></div>
+<section class="card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for field in form %}
+      <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% if field.help_text %}<div class="helptext">{{ field.help_text }}</div>{% endif %}{% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>
+    {% endfor %}
+    {% for error in form.non_field_errors %}<div class="error">{{ error }}</div>{% endfor %}
+    <button class="button" type="submit">Create account</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">Already registered? <a href="{% url 'user_login' %}">Sign in</a>.</p>
+</section>
+{% endblock %}
