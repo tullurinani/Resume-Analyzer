@@ -1,12 +1,10 @@
-# analyzerapp/ai/scoring_model.py
+"""Simple, transparent interview rubric scoring helper."""
 
-def calculate_score(comm, rel, conf):
-    """
-    Calculates average score based on 3 metrics:
-    - Communication
-    - Relevance
-    - Confidence
-    Returns a float score rounded to 2 decimals.
-    """
-    total = (comm + rel + conf) / 3.0
-    return round(total, 2)
+
+def calculate_score(communication: int, relevance: int, confidence: int) -> float:
+    scores = (communication, relevance, confidence)
+    if any(not isinstance(value, int) for value in scores):
+        raise TypeError("Scores must be integers.")
+    if any(value < 0 or value > 100 for value in scores):
+        raise ValueError("Each score must be between 0 and 100.")
+    return round(sum(scores) / len(scores), 2)
