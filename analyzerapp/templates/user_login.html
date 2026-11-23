@@ -1,125 +1,14 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>🔐 User Login</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: linear-gradient(to right, #e0f7fa, #ffffff);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            animation: fadeInBody 1s ease-in-out;
-            margin: 0;
-        }
-
-        @keyframes fadeInBody {
-            0% { opacity: 0; transform: scale(0.97); }
-            100% { opacity: 1; transform: scale(1); }
-        }
-
-        .login-box {
-            background: #ffffffdd;
-            padding: 35px 30px;
-            border-radius: 12px;
-            box-shadow: 0 12px 28px rgba(0,0,0,0.1);
-            width: 350px;
-            animation: slideUp 1s ease-in-out;
-        }
-
-        @keyframes slideUp {
-            0% { transform: translateY(20px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-
-        h2 {
-            text-align: center;
-            margin-bottom: 10px;
-            color: #333;
-        }
-
-        .intro {
-            font-size: 14px;
-            color: #666;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        input[type="email"], input[type="password"] {
-            width: 100%;
-            padding: 12px;
-            margin: 10px 0 15px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 14px;
-            transition: 0.3s ease;
-        }
-
-        input[type="email"]:focus, input[type="password"]:focus {
-            border-color: #007bff;
-            box-shadow: 0 0 6px rgba(0,123,255,0.2);
-            outline: none;
-        }
-
-        input[type="submit"] {
-            background: linear-gradient(to right, #007bff, #00c6ff);
-            color: white;
-            padding: 12px;
-            width: 100%;
-            border: none;
-            border-radius: 6px;
-            font-size: 15px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        input[type="submit"]:hover {
-            background: linear-gradient(to right, #0056b3, #00b4d8);
-        }
-
-        .error {
-            color: red;
-            font-size: 14px;
-            text-align: center;
-            margin-top: 10px;
-        }
-
-        a {
-            display: block;
-            text-align: center;
-            margin-top: 15px;
-            color: #dc3545;
-            font-weight: bold;
-            text-decoration: none;
-            transition: color 0.3s;
-        }
-
-        a:hover {
-            color: #b02a37;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-box">
-        <h2>🔐 User Login</h2>
-        <div class="intro">
-            🤖 Access your personalized AI Interview Dashboard.<br>
-            Upload your resume, face our virtual interviewer, and improve your skills with smart feedback!
-        </div>
-        <form method="post">
-            {% csrf_token %}
-            {{ form.email.label }}<br>
-            {{ form.email }}<br>
-            {{ form.password.label }}<br>
-            {{ form.password }}<br>
-            <input type="submit" value="Login">
-            <a href="{% url 'user_logout' %}">🚪 Logout</a>
-        </form>
-        {% if error %}
-            <p class="error">{{ error }}</p>
-        {% endif %}
-    </div>
-</body>
-</html>
+{% extends 'base.html' %}
+{% block title %}Candidate sign in | Resume Analyzer AI{% endblock %}
+{% block container_class %}narrow{% endblock %}
+{% block content %}
+<div class="page-heading"><div class="eyebrow">CANDIDATE WORKSPACE</div><h1>Welcome back</h1><p>Sign in to access your resume and interview practice.</p></div>
+<section class="card">
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {% for field in form %}<div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% for error in field.errors %}<div class="error">{{ error }}</div>{% endfor %}</div>{% endfor %}
+    <button class="button" type="submit">Sign in</button>
+  </form>
+  <p class="muted" style="margin-bottom:0">Need an account? <a href="{% url 'register' %}">Register here</a>.</p>
+</section>
+{% endblock %}
