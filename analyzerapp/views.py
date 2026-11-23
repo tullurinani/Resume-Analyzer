@@ -1,252 +1,242 @@
-# analyzerapp/views.py
+"""Views for resume upload, practice interviews and staff review."""
+from __future__ import annotations
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login
-from django.contrib.auth.models import User
+import os
+
+from django.conf import settings
 from django.contrib import messages
-from django.core.files.base import ContentFile
-from .models import Resume, Interview
-from .forms import ResumeUploadForm
-from .ai.resume_parser import parse_resume
-from .ai.question_generator import generate_questions
-from .ai.scoring_model import calculate_score
-from django.contrib.sessions.backends.db import SessionStore
-  
-# ---------- INDEX ----------
-def index(request):
-    return render(request, 'index.html')
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.hashers import check_password, make_password
+from django.core.mail import send_mail
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
-# ---------- USER ----------
+from .ai.question_generator import generate_questions
+from .ai.resume_parser import parse_resume
+from .ai.scoring_model import calculate_score
+from .forms import CandidateForm, LoginForm, ResumeUploadForm
+from .models import Candidate, Interview
+
+
+def index(request):
+    return render(request, "index.html")
+
+
 def user_register(request):
-    if request.method == 'POST':
-        form = CandidateForm(request.POST, request.FILES)
+    if request.method == "POST":
+        form = CandidateForm(request.POST)
         if form.is_valid():
-            email = form.cleaned_data.get('email')
-            if Candidate.objects.filter(email=email).exists():
-                return render(request, 'register.html', {'form': form, 'error': 'Email already exists.'})
-            
-            form.save()
-            return redirect('user_login')  # ✅ redirect to login page
+            if Candidate.objects.filter(email__iexact=form.cleaned_data["email"]).exists():
+                form.add_error("email", "An account with this email already exists.")
+            else:
+                form.save()
+                messages.success(request, "Your account was created. You can sign in now.")
+                return redirect("user_login")
     else:
         form = CandidateForm()
-    return render(request, 'register.html', {'form': form})
+    return render(request, "register.html", {"form": form})
 
-
-from .forms import LoginForm
 
 def user_login(request):
-    error = None
-    if request.method == 'POST':
-        form = LoginForm(request.POST)
-        if form.is_valid():
-            email = form.cleaned_data['email']
-            password = form.cleaned_data['password']
-            try:
-                candidate = Candidate.objects.get(email=email, password=password)
-                request.session['candidate_id'] = candidate.id
-                return redirect('user_dashboard')  # ✅ make sure this URL exists
-            except Candidate.DoesNotExist:
-                error = "Invalid email or password."
-    else:
-        form = LoginForm()
+    form = LoginForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        email = form.cleaned_data["email"].strip()
+        password = form.cleaned_data["password"]
+        candidate = Candidate.objects.filter(email__iexact=email).first()
+        if candidate and check_password(password, candidate.password):
+            request.session.flush()
+            request.session["candidate_id"] = candidate.pk
+            messages.success(request, f"Welcome back, {candidate.name}.")
+            return redirect("user_dashboard")
 
-    return render(request, 'user_login.html', {'form': form, 'error': error})
+        # One-time migration path: old local accounts stored plaintext passwords.
+        # A legacy password is immediately re-hashed after a successful login.
+        if candidate and candidate.password and candidate.password == password:
+            candidate.password = make_password(password)
+            candidate.save(update_fields=["password"])
+            request.session.flush()
+            request.session["candidate_id"] = candidate.pk
+            messages.success(request, f"Welcome back, {candidate.name}. Your password was secured.")
+            return redirect("user_dashboard")
+
+        messages.error(request, "The email or password is incorrect.")
+    return render(request, "user_login.html", {"form": form})
+
+
+def _current_candidate(request):
+    candidate_id = request.session.get("candidate_id")
+    if not candidate_id:
+        return None
+    return Candidate.objects.filter(pk=candidate_id).first()
 
 
 def user_dashboard(request):
-    candidate_id = request.session.get('candidate_id')
-    if candidate_id:
-        candidate = Candidate.objects.get(id=candidate_id)
-        return render(request, 'user_dashboard.html', {'candidate': candidate})
-    return redirect('user_login')
+    candidate = _current_candidate(request)
+    if candidate is None:
+        return redirect("user_login")
+    latest_resume = candidate.resumes.order_by("-uploaded_at").first()
+    return render(request, "user_dashboard.html", {"candidate": candidate, "latest_resume": latest_resume})
 
-
-
-
-from django.core.files.storage import FileSystemStorage
 
 def upload_resume(request):
-    candidate_id = request.session.get('candidate_id')
-    if not candidate_id:
-        return redirect('user_login')
+    candidate = _current_candidate(request)
+    if candidate is None:
+        return redirect("user_login")
 
-    candidate = Candidate.objects.get(id=candidate_id)
+    form = ResumeUploadForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        resume = form.save(commit=False)
+        resume.candidate = candidate
+        resume.save()
+        request.session["uploaded_resume_path"] = resume.resume_file.path
+        messages.success(request, "Resume uploaded successfully.")
+        return redirect("user_dashboard")
 
-    if request.method == 'POST' and request.FILES.get('resume'):
-        resume_file = request.FILES['resume']
+    return render(request, "resume_upload.html", {"form": form})
 
-        # Save to media/resumes/uploaded/
-        fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'resumes/uploaded'))
-        filename = fs.save(resume_file.name, resume_file)
-        file_path = os.path.join('resumes/uploaded', filename)
-
-        # Save to Resume model
-        Resume.objects.update_or_create(
-            candidate=candidate,
-            defaults={'resume_file': file_path}
-        )
-
-        # Save absolute path to session for AI parsing
-        absolute_path = os.path.join(settings.MEDIA_ROOT, file_path)
-        request.session['uploaded_resume_path'] = absolute_path
-
-        return redirect('user_dashboard')
-
-    return render(request, 'resume_upload.html')
-
-
-from django.conf import settings
-import os
-
-# def resume_upload(request):
-#     if request.method == 'POST' and request.FILES.get('resume'):
-#         resume = request.FILES['resume']
-
-#         # Save file to resumes/uploaded/
-#         upload_dir = os.path.join(settings.BASE_DIR, 'resumes', 'uploaded')
-#         os.makedirs(upload_dir, exist_ok=True)
-
-#         fs = FileSystemStorage(location=upload_dir)
-#         filename = fs.save(resume.name, resume)
-#         full_path = os.path.join(upload_dir, filename)
-
-#         # ✅ Save full path in session
-#         request.session['uploaded_resume_path'] = full_path
-
-#         return redirect('user_dashboard')
-#     return render(request, 'resume_upload.html')
-from .models import Candidate
-from .forms import CandidateForm
-def resume_upload(request):
-    if request.method == 'POST':
-        form = CandidateForm(request.POST, request.FILES)
-        if form.is_valid():
-            candidate = form.save()
-            request.session['candidate_id'] = candidate.id
-            request.session['uploaded_resume_path'] = candidate.resume_file.path
-            return redirect('user_dashboard')
-    else:
-        form = CandidateForm()
-    return render(request, 'resume_upload.html', {'form': form})
-
-from django.views.decorators.csrf import csrf_exempt
-from django.core.files.base import ContentFile
-from django.http import HttpResponse
-
-@csrf_exempt
-def upload_video(request):
-    candidate_id = request.session.get('candidate_id')
-    if candidate_id and request.method == 'POST':
-        candidate = Candidate.objects.get(id=candidate_id)
-        video_data = request.FILES['video']
-        candidate.interview_video.save(f"interview_{candidate_id}.webm", video_data)
-        candidate.save()
-        return HttpResponse("Uploaded")
-    return HttpResponse("Failed", status=400)
-
-# analyzerapp/views.py
-from django.shortcuts import render
-from .ai.resume_parser import parse_resume
-from .ai.question_generator import generate_questions
 
 def start_interview(request):
-    resume_path = request.session.get('uploaded_resume_path')
-    if resume_path and os.path.exists(resume_path):
-        parsed = parse_resume(resume_path)
-        questions = generate_questions(parsed)
-        questions_list = questions.split('\n')
+    candidate = _current_candidate(request)
+    if candidate is None:
+        return redirect("user_login")
+
+    latest_resume = candidate.resumes.order_by("-uploaded_at").first()
+    questions = []
+    if latest_resume and latest_resume.resume_file and os.path.isfile(latest_resume.resume_file.path):
+        try:
+            parsed = parse_resume(latest_resume.resume_file.path)
+            questions = generate_questions(parsed)
+        except Exception as exc:
+            messages.error(request, f"The resume could not be parsed: {exc}")
     else:
-        questions_list = ["❗ Please upload your resume first."]
-    
-    return render(request, 'interview.html', {'questions': questions_list})
+        messages.info(request, "Upload a PDF or DOCX resume before starting an interview.")
+
+    return render(request, "interview.html", {"candidate": candidate, "questions": questions})
 
 
+@require_POST
+def upload_video(request):
+    candidate = _current_candidate(request)
+    if candidate is None:
+        return JsonResponse({"ok": False, "error": "Please sign in again."}, status=401)
 
-def upload_interview_video(request):
-    if request.method == 'POST' and request.FILES.get('video'):
-        interview = Interview.objects.get(user=request.user)
-        video = request.FILES['video']
-        interview.video_file.save(f"{request.user.username}_interview.webm", ContentFile(video.read()))
-        interview.save()
-        return redirect('user_dashboard')
-    return render(request, 'interview.html', {'error': 'No video received'})
+    video = request.FILES.get("video")
+    if video is None:
+        return JsonResponse({"ok": False, "error": "No video file was received."}, status=400)
+    if video.size > 100 * 1024 * 1024:
+        return JsonResponse({"ok": False, "error": "The recording is larger than 100 MB."}, status=413)
+    extension = os.path.splitext(video.name)[1].lower()
+    if extension not in {".webm", ".mp4", ".mov"}:
+        return JsonResponse({"ok": False, "error": "Unsupported video format."}, status=400)
 
-# ---------- ADMIN ----------
+    candidate.interview_video.save(f"candidate_{candidate.pk}{extension}", video, save=True)
+    return JsonResponse({"ok": True, "message": "Interview recording saved."})
+
+
+def _staff_check(user):
+    return user.is_authenticated and user.is_active and (user.is_staff or user.is_superuser)
+
+
+staff_required = user_passes_test(_staff_check, login_url="admin_login")
+
+
 def admin_login(request):
-    if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
+    if request.user.is_authenticated and _staff_check(request.user):
+        return redirect("admin_dashboard")
+    error = None
+    if request.method == "POST":
+        username = request.POST.get("username", "").strip()
+        password = request.POST.get("password", "")
+        user = authenticate(request, username=username, password=password)
+        if user is not None and _staff_check(user):
+            login(request, user)
+            return redirect("admin_dashboard")
+        error = "Sign-in failed. Use an active Django staff account."
+    return render(request, "admin_login.html", {"error": error})
 
-        if username == 'admin' and password == 'admin':
-            request.session['admin_logged_in'] = True
-            return redirect('admin_dashboard')
-        else:
-            messages.error(request, "❌ Invalid credentials.")
-            return redirect('admin_login')
-    return render(request, 'admin_login.html')  
 
+@staff_required
 def admin_dashboard(request):
-    candidates = Candidate.objects.all().order_by('-submitted_at')
-    return render(request, 'admin_dashboard.html', {'candidates': candidates})
+    candidates = Candidate.objects.all().order_by("-submitted_at")
+    return render(request, "admin_dashboard.html", {"candidates": candidates})
 
 
-from django.views.decorators.csrf import csrf_protect
-from random import randint
-
-@csrf_protect
+@staff_required
+@require_POST
 def update_status(request, candidate_id):
-    candidate = Candidate.objects.get(id=candidate_id)
-    if request.method == 'POST':
-        new_status = request.POST.get('status')
-        candidate.status = new_status
+    candidate = get_object_or_404(Candidate, pk=candidate_id)
+    new_status = request.POST.get("status", "").strip()
+    if new_status not in {"Pending", "Accepted", "Rejected"}:
+        messages.error(request, "Invalid candidate status.")
+        return redirect("admin_dashboard")
 
-        # ✅ Score update logic
-        if new_status == "Rejected":
-            candidate.score = randint(10, 34)
-        elif new_status == "Accepted":
-            candidate.score = randint(75, 100)
-        elif new_status == "Pending":
-            candidate.score = None
-        candidate.save()
+    candidate.status = new_status
+    candidate.save(update_fields=["status"])
 
-        # ✅ Send email after saving
-        send_status_email(candidate.email, candidate.name, new_status)
+    if settings.EMAIL_HOST or settings.EMAIL_BACKEND.endswith("console.EmailBackend"):
+        try:
+            send_mail(
+                subject="Application status update",
+                message=f"Hello {candidate.name}, your application status is now: {new_status}.",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[candidate.email],
+                fail_silently=True,
+            )
+        except Exception:
+            pass
 
-    return redirect('admin_dashboard')
+    messages.success(request, f"Updated {candidate.name}'s status to {new_status}.")
+    return redirect("admin_dashboard")
 
+
+@staff_required
 def score_interview(request, id):
-    interview = get_object_or_404(Interview, id=id)
-    if request.method == 'POST':
-        comm = int(request.POST.get('comm_score'))
-        rel = int(request.POST.get('rel_score'))
-        conf = int(request.POST.get('conf_score'))
-        total = calculate_score(comm, rel, conf)
-        interview.communication_score = comm
-        interview.relevance_score = rel
-        interview.confidence_score = conf
+    interview = get_object_or_404(Interview, pk=id)
+    if request.method == "POST":
+        try:
+            communication = int(request.POST.get("comm_score", ""))
+            relevance = int(request.POST.get("rel_score", ""))
+            confidence = int(request.POST.get("conf_score", ""))
+            total = calculate_score(communication, relevance, confidence)
+        except (TypeError, ValueError) as exc:
+            messages.error(request, str(exc))
+            return redirect("admin_dashboard")
+
+        interview.communication_score = communication
+        interview.relevance_score = relevance
+        interview.confidence_score = confidence
         interview.total_score = total
-        interview.save()
-        return redirect('admin_dashboard')
-    return render(request, 'score_result.html', {'interview': interview})
+        interview.save(update_fields=["communication_score", "relevance_score", "confidence_score", "total_score"])
+        messages.success(request, "Interview score saved.")
+        return redirect("admin_dashboard")
+    return render(request, "score_result.html", {"interview": interview})
 
+
+@staff_required
+@require_POST
 def accept_interview(request, id):
-    interview = get_object_or_404(Interview, id=id)
-    interview.status = 'Accepted'
-    interview.save()
-    return redirect('admin_dashboard')
+    interview = get_object_or_404(Interview, pk=id)
+    interview.status = "Accepted"
+    interview.save(update_fields=["status"])
+    return redirect("admin_dashboard")
 
+
+@staff_required
+@require_POST
 def reject_interview(request, id):
-    interview = get_object_or_404(Interview, id=id)
-    interview.status = 'Rejected'
-    interview.save()
-    return redirect('admin_dashboard')
+    interview = get_object_or_404(Interview, pk=id)
+    interview.status = "Rejected"
+    interview.save(update_fields=["status"])
+    return redirect("admin_dashboard")
+
 
 def admin_logout(request):
-    request.session.flush()
-    return redirect('index')
-
-
-from django.contrib.auth import logout
-def user_logout(request):
     logout(request)
-    return redirect('index')  
+    return redirect("index")
+
+
+def user_logout(request):
+    request.session.flush()
+    return redirect("index")
